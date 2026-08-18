@@ -31,10 +31,10 @@ const BLOCKS = [
   },
   {
     index: "04",
-    title: "Simulator",
-    body: "Before changing anything for real, build a what-if: add an order line, change a priority, or receive stock. The projection uses the exact same engine as production, shows revenue at risk before and after, and lets you apply the scenario when you're confident.",
+    title: "Decision simulator",
+    body: "Start from the live situation: pick an order that needs a decision, choose between allocation, reallocation, partial fulfillment and more, approve when required, and see the simulated business impact — profit, complaints, delays, trade-offs — before you commit. The scenario lab lets you build custom what-ifs with the same engine.",
     href: "/dashboard/simulator",
-    cta: "See it live — build a scenario",
+    cta: "See it live — the decision desk",
   },
 ];
 

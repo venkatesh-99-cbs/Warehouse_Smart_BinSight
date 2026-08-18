@@ -51,7 +51,9 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useSearchParams } from "react-router";
 import { StrategyComparisonPanel } from "./StrategyComparison";
+import DecisionDesk from "./DecisionDesk";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -246,6 +248,10 @@ export default function Simulator() {
   const [comparing, setComparing] = useState(false);
   const [compareVisible, setCompareVisible] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [view, setView] = useState<"desk" | "lab">(
+    searchParams.get("focusOrder") ? "desk" : "desk",
+  );
 
   const defaultDeadline = useMemo(() => toLocalInput(Date.now() + 48 * HOUR), []);
 
@@ -346,6 +352,31 @@ export default function Simulator() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="space-y-6">
+      {/* ------------------------------------------------ view toggle */}
+      <div className="flex items-center gap-1 border-b border-border/60">
+        <button
+          type="button"
+          onClick={() => setView("desk")}
+          className={cn(
+            "px-4 py-2.5 text-xs font-bold uppercase tracking-[0.12em] transition-colors",
+            view === "desk" ? "border-b-2 border-swissblue text-foreground" : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          Decision desk
+        </button>
+        <button
+          type="button"
+          onClick={() => setView("lab")}
+          className={cn(
+            "px-4 py-2.5 text-xs font-bold uppercase tracking-[0.12em] transition-colors",
+            view === "lab" ? "border-b-2 border-swissblue text-foreground" : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          Scenario lab
+        </button>
+      </div>
+      {view === "lab" ? (
+        <>
       {/* ------------------------------------------------ header + controls */}
       <div className="flex flex-wrap items-center gap-6">
         <div className="flex items-center gap-3">
@@ -1030,6 +1061,10 @@ export default function Simulator() {
       <datalist id="sim-skus">
         {products.map((p) => <option key={p.sku} value={p.sku} />)}
       </datalist>
+        </>
+      ) : (
+        <DecisionDesk />
+      )}
     </motion.div>
   );
 }

@@ -1,12 +1,13 @@
-/* WarehouseOS — Swiss design system
-   Strict typographic grid · confident sans-serif hierarchy · square corners ·
-   generous negative space · restrained red / black / blue palette. */
+/* WarehouseOS — Professional enterprise operations design system
+   Deep navy-slate surfaces · confident sans-serif hierarchy · square corners ·
+   restrained palette: navy/teal for structure, amber/gold for warnings,
+   green for healthy, red ONLY for severe alerts. */
 @import "tailwindcss";
 @import "tw-animate-css";
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  /* strict Swiss grid — every corner is square */
+  /* strict grid — every corner is square */
   --radius-sm: 0px;
   --radius-md: 0px;
   --radius-lg: 0px;
@@ -43,13 +44,13 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Swiss accents */
-  --color-swissred: #e30613;
-  --color-swissred-dark: #b00510;
-  --color-swissblue: #2e6bff;
-  --color-swissblue-dark: #1e4fd0;
-  --color-swissink: #0a0a0a;
-  --color-swisspanel: #141414;
+  /* enterprise accents — amber = critical attention, navy = action */
+  --color-swissred: oklch(0.66 0.15 55); /* deep amber/orange — critical */
+  --color-swissred-dark: oklch(0.55 0.14 50);
+  --color-swissblue: oklch(0.63 0.12 245); /* navy/blue — action + info */
+  --color-swissblue-dark: oklch(0.52 0.12 250);
+  --color-swissink: oklch(0.13 0.012 262); /* deep navy-slate */
+  --color-swisspanel: oklch(0.19 0.016 262);
 
   --font-sans: "Helvetica Neue", Helvetica, Arial, "Segoe UI", ui-sans-serif,
     system-ui, sans-serif;
@@ -60,72 +61,72 @@
 :root {
   /* square corners — strict grid, no softening */
   --radius: 0px;
-  --background: oklch(0.055 0 0);
-  --foreground: oklch(0.97 0 0);
-  --card: oklch(0.09 0 0);
-  --card-foreground: oklch(0.97 0 0);
-  --popover: oklch(0.11 0 0);
-  --popover-foreground: oklch(0.97 0 0);
-  /* Swiss red as the primary action color */
-  --primary: oklch(0.585 0.235 28);
+  --background: oklch(0.145 0.014 262); /* deep navy-slate */
+  --foreground: oklch(0.955 0.004 262);
+  --card: oklch(0.185 0.016 262);
+  --card-foreground: oklch(0.955 0.004 262);
+  --popover: oklch(0.21 0.016 262);
+  --popover-foreground: oklch(0.955 0.004 262);
+  /* professional navy as the primary action color */
+  --primary: oklch(0.54 0.115 252);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.16 0 0);
-  --secondary-foreground: oklch(0.9 0 0);
-  --muted: oklch(0.14 0 0);
-  --muted-foreground: oklch(0.62 0 0);
-  --accent: oklch(0.17 0 0);
-  --accent-foreground: oklch(0.95 0 0);
-  --destructive: oklch(0.585 0.235 28);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 14%);
-  --ring: oklch(0.585 0.235 28);
-  --chart-1: oklch(0.585 0.235 28); /* red */
-  --chart-2: oklch(0.62 0.2 262); /* blue */
-  --chart-3: oklch(0.72 0.15 70); /* amber */
-  --chart-4: oklch(0.62 0.16 155); /* emerald */
-  --chart-5: oklch(0.75 0.08 260); /* slate blue */
-  --sidebar: oklch(0.07 0 0);
-  --sidebar-foreground: oklch(0.92 0 0);
-  --sidebar-primary: oklch(0.585 0.235 28);
+  --secondary: oklch(0.24 0.014 262);
+  --secondary-foreground: oklch(0.92 0.005 262);
+  --muted: oklch(0.26 0.012 262);
+  --muted-foreground: oklch(0.71 0.012 262);
+  --accent: oklch(0.26 0.018 262);
+  --accent-foreground: oklch(0.95 0.005 262);
+  --destructive: oklch(0.56 0.17 25); /* restrained red — severe only */
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.54 0.115 252);
+  --chart-1: oklch(0.62 0.12 250); /* navy */
+  --chart-2: oklch(0.65 0.11 190); /* teal */
+  --chart-3: oklch(0.72 0.13 75); /* amber/gold */
+  --chart-4: oklch(0.65 0.14 155); /* green */
+  --chart-5: oklch(0.72 0.06 280); /* muted slate-violet */
+  --sidebar: oklch(0.12 0.012 262);
+  --sidebar-foreground: oklch(0.92 0.005 262);
+  --sidebar-primary: oklch(0.54 0.115 252);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.15 0 0);
-  --sidebar-accent-foreground: oklch(0.95 0 0);
-  --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.585 0.235 28);
+  --sidebar-accent: oklch(0.21 0.016 262);
+  --sidebar-accent-foreground: oklch(0.95 0.005 262);
+  --sidebar-border: oklch(1 0 0 / 9%);
+  --sidebar-ring: oklch(0.54 0.115 252);
 }
 
 .dark {
-  --background: oklch(0.055 0 0);
-  --foreground: oklch(0.97 0 0);
-  --card: oklch(0.09 0 0);
-  --card-foreground: oklch(0.97 0 0);
-  --popover: oklch(0.11 0 0);
-  --popover-foreground: oklch(0.97 0 0);
-  --primary: oklch(0.585 0.235 28);
+  --background: oklch(0.145 0.014 262);
+  --foreground: oklch(0.955 0.004 262);
+  --card: oklch(0.185 0.016 262);
+  --card-foreground: oklch(0.955 0.004 262);
+  --popover: oklch(0.21 0.016 262);
+  --popover-foreground: oklch(0.955 0.004 262);
+  --primary: oklch(0.54 0.115 252);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.16 0 0);
-  --secondary-foreground: oklch(0.9 0 0);
-  --muted: oklch(0.14 0 0);
-  --muted-foreground: oklch(0.62 0 0);
-  --accent: oklch(0.17 0 0);
-  --accent-foreground: oklch(0.95 0 0);
-  --destructive: oklch(0.585 0.235 28);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 14%);
-  --ring: oklch(0.585 0.235 28);
-  --chart-1: oklch(0.585 0.235 28);
-  --chart-2: oklch(0.62 0.2 262);
-  --chart-3: oklch(0.72 0.15 70);
-  --chart-4: oklch(0.62 0.16 155);
-  --chart-5: oklch(0.75 0.08 260);
-  --sidebar: oklch(0.07 0 0);
-  --sidebar-foreground: oklch(0.92 0 0);
-  --sidebar-primary: oklch(0.585 0.235 28);
+  --secondary: oklch(0.24 0.014 262);
+  --secondary-foreground: oklch(0.92 0.005 262);
+  --muted: oklch(0.26 0.012 262);
+  --muted-foreground: oklch(0.71 0.012 262);
+  --accent: oklch(0.26 0.018 262);
+  --accent-foreground: oklch(0.95 0.005 262);
+  --destructive: oklch(0.56 0.17 25);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.54 0.115 252);
+  --chart-1: oklch(0.62 0.12 250);
+  --chart-2: oklch(0.65 0.11 190);
+  --chart-3: oklch(0.72 0.13 75);
+  --chart-4: oklch(0.65 0.14 155);
+  --chart-5: oklch(0.72 0.06 280);
+  --sidebar: oklch(0.12 0.012 262);
+  --sidebar-foreground: oklch(0.92 0.005 262);
+  --sidebar-primary: oklch(0.54 0.115 252);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.15 0 0);
-  --sidebar-accent-foreground: oklch(0.95 0 0);
-  --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.585 0.235 28);
+  --sidebar-accent: oklch(0.21 0.016 262);
+  --sidebar-accent-foreground: oklch(0.95 0.005 262);
+  --sidebar-border: oklch(1 0 0 / 9%);
+  --sidebar-ring: oklch(0.54 0.115 252);
 }
 
 @layer base {
@@ -150,9 +151,9 @@
   }
 }
 
-/* ---- Swiss toolkit ---- */
+/* ---- enterprise toolkit ---- */
 @layer utilities {
-  /* uppercase micro-label with wide letter-spacing (International Typographic Style) */
+  /* uppercase micro-label with wide letter-spacing */
   .micro-label {
     font-size: 10px;
     font-weight: 600;
@@ -164,7 +165,7 @@
   .tnum {
     font-variant-numeric: tabular-nums;
   }
-  /* subtle structural grid — the Swiss poster grid translated to a control deck */
+  /* subtle structural grid — the control-deck backdrop */
   .grid-bg {
     background-image:
       linear-gradient(to right, oklch(1 0 0 / 3%) 1px, transparent 1px),
@@ -182,7 +183,7 @@
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
   }
-  /* primary red accent bar — the top status line of the control deck */
+  /* primary accent bar — the top status line of the control deck */
   .accent-bar {
     background: var(--primary);
     height: 3px;
