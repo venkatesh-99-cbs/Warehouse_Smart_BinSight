@@ -1,272 +1,468 @@
-## Overview
+# WarehouseOS
 
-This project uses the following tech stack:
-- Vite
-- Typescript
-- React Router v7 (all imports from `react-router` instead of `react-router-dom`)
-- React 19 (for frontend components)
-- Tailwind v4 (for styling)
-- Shadcn UI (for UI components library)
-- Lucide Icons (for icons)
-- Convex (for backend & database)
-- Convex Auth (for authentication)
-- Framer Motion (for animations)
-- Three js (for 3d models)
+### AI-Powered Smart Warehouse Management & Decision Support Platform
 
-All relevant files live in the 'src' directory.
+**WarehouseOS** is an AI-powered warehouse management and decision-support platform designed to help warehouse managers understand operational problems, monitor critical activities, explore possible scenarios, and make faster data-driven decisions.
 
-Use bun for the package manager.
+Built as a **solo project for the Prompt Wars X Work Wizards Innovations Hackathon 2026**, WarehouseOS focuses on transforming warehouse data into actionable operational insights.
 
-## Setup
+## 🚀 Live Demo
 
-This project is set up already and running on a cloud environment, as well as a convex development in the sandbox.
+[WarehouseOS — Live Demo](https://smartwarehousesight.freebuff.app/?utm_source=chatgpt.com)
 
-## Environment Variables
+---
 
-The project is set up with project specific CONVEX_DEPLOYMENT and VITE_CONVEX_URL environment variables on the client side.
+## 📌 Overview
 
-The convex server has a separate set of environment variables that are accessible by the convex backend.
+Modern warehouse operations involve continuously changing inventory levels, incoming orders, fulfillment delays, stock risks, and operational bottlenecks.
 
-Currently, these variables include auth-specific keys: JWKS, JWT_PRIVATE_KEY, and SITE_URL.
+WarehouseOS provides a centralized interface for understanding these operational conditions and exploring potential outcomes before making decisions.
 
+The platform focuses on four key principles:
 
-# Using Authentication (Important!)
+> **Understand → Analyze → Simulate → Decide**
 
-You must follow these conventions when using authentication.
+Instead of only displaying warehouse information, WarehouseOS is designed to provide a decision-oriented experience where managers can identify issues, explore scenarios, and understand their potential impact.
 
-## Auth is already set up.
+---
 
-All convex authentication functions are already set up. The auth currently uses email OTP and anonymous users, but can support more.
+## ✨ Key Features
 
-The email OTP configuration is defined in `src/convex/auth/emailOtp.ts`. DO NOT MODIFY THIS FILE.
+### 📦 Inventory & Stock Monitoring
 
-Also, DO NOT MODIFY THESE AUTH FILES: `src/convex/auth.config.ts` and `src/convex/auth.ts`.
+Track important inventory conditions and identify potential stock-related problems before they affect fulfillment.
 
-## Using Convex Auth on the backend
+### 📋 Order & Fulfillment Visibility
 
-On the `src/convex/users.ts` file, you can use the `getCurrentUser` function to get the current user's data.
+Monitor pending orders, fulfillment activity, and operational delays from a centralized dashboard.
 
-## Using Convex Auth on the frontend
+### ⚠️ Operational Issue Tracking
 
-The `/auth` page is already set up to use auth. Navigate to `/auth` for all log in / sign up sequences.
+Identify and organize warehouse problems such as:
 
-You MUST use this hook to get user data. Never do this yourself without the hook:
-```typescript
-import { useAuth } from "@/hooks/use-auth";
+* Stock risks
+* Order backlogs
+* Fulfillment delays
+* Picking issues
+* Low inventory conditions
+* Operational bottlenecks
 
-const { isLoading, isAuthenticated, user, signIn, signOut } = useAuth();
+### 🔮 What-If Simulation
+
+Explore hypothetical operational changes and understand their possible impact before implementing them.
+
+Examples include:
+
+* Increasing available staff
+* Changing operational capacity
+* Evaluating potential backlog reduction
+* Understanding fulfillment improvements
+* Comparing possible operational outcomes
+
+### 📊 Analytics Dashboard
+
+Get a centralized overview of warehouse activity through visual metrics, issue breakdowns, and operational indicators.
+
+### 📝 Recent Activity Logs
+
+Review recent system activity and operational events to maintain better visibility into what is happening across the warehouse.
+
+### 🔐 Authentication
+
+WarehouseOS uses **Convex Auth** with support for email OTP and anonymous users. Authentication and protected routes are already integrated into the application.
+
+### 📱 Responsive Interface
+
+The application is designed to work across desktop and mobile screen sizes with responsive layouts and reusable UI components.
+
+### 🎨 Interactive Experience
+
+The interface uses animations and interactive components powered by **Framer Motion**, with **Three.js** available for 3D visual experiences.
+
+---
+
+## 🖥️ Platform Experience
+
+WarehouseOS is organized around a dashboard-driven workflow.
+
+### Dashboard
+
+Provides a high-level operational overview including:
+
+* Open warehouse issues
+* Pending orders
+* Inventory risks
+* Operational status
+* Issue categories
+* Recent activities
+* Simulation insights
+
+### Issues
+
+Provides visibility into active warehouse problems and operational risks.
+
+### What-If Simulation
+
+Allows users to explore hypothetical changes and evaluate potential operational outcomes.
+
+### Analytics
+
+Helps users understand warehouse activity and operational trends through visual data.
+
+### Logs
+
+Provides access to recent activity and system events for improved operational visibility.
+
+### Reports
+
+Provides a structured view of warehouse insights and operational information.
+
+---
+
+## 🧠 What Makes WarehouseOS Different?
+
+Traditional warehouse dashboards primarily focus on **displaying information**.
+
+WarehouseOS focuses on helping users **make decisions from that information**.
+
+### Traditional Dashboard
+
+```text
+Data
+ ↓
+Charts
+ ↓
+Manual Analysis
+ ↓
+Decision
 ```
 
-## Protected Routes
+### WarehouseOS
 
-The starter `/dashboard` route is protected with `RequireAuth`, which sends
-signed-out users to `/auth?returnTo=<current route>`. Extend that page for the
-product's authenticated experience, and reuse `RequireAuth` when adding another
-protected route.
-
-## Auth Page
-
-The auth page is defined in `src/pages/Auth.tsx`. Send sign-in and sign-up actions
-to `/auth`.
-
-## Authorization
-
-You can perform authorization checks on the frontend and backend.
-
-On the frontend, you can use the `useAuth` hook to get the current user's data and authentication state.
-
-You should also be protecting queries, mutations, and actions at the base level, checking for authorization securely.
-
-## Adding a redirect after auth
-
-The `/auth` route in `src/main.tsx` redirects to `/dashboard` by default. If the
-product's main authenticated route is different, update `redirectAfterAuth` to
-that route. A validated same-origin `returnTo` query parameter takes priority so
-users can resume the protected page they originally requested. Never leave an
-authenticated product redirecting back to the public landing page.
-
-## Complete authenticated products
-
-When the requested product implies accounts, a workspace, a dashboard, or other
-signed-in functionality, the task is not complete with only a landing page and
-auth form. Build the main authenticated experience, protect its route, and verify
-that signing in reaches it.
-
-# Frontend Conventions
-
-You will be using the Vite frontend with React 19, Tailwind v4, and Shadcn UI.
-
-Generally, pages should be in the `src/pages` folder, and components should be in the `src/components` folder.
-
-Shadcn primitives are located in the `src/components/ui` folder and should be used by default.
-
-## Page routing
-
-Your page component should go under the `src/pages` folder.
-
-When adding a page, update the react router configuration in `src/main.tsx` to include the new route you just added.
-
-## Shad CN conventions
-
-Follow these conventions when using Shad CN components, which you should use by default.
-- Remember to use "cursor-pointer" to make the element clickable
-- For title text, use the "tracking-tight font-bold" class to make the text more readable
-- Always make apps MOBILE RESPONSIVE. This is important
-- AVOID NESTED CARDS. Try and not to nest cards, borders, components, etc. Nested cards add clutter and make the app look messy.
-- AVOID SHADOWS. Avoid adding any shadows to components. stick with a thin border without the shadow.
-- Avoid skeletons; instead, use the loader2 component to show a spinning loading state when loading data.
-
-
-## Landing Pages
-
-You must always create good-looking designer-level styles to your application. 
-- Make it well animated and fit a certain "theme", ie neo brutalist, retro, neumorphism, glass morphism, etc
-
-Use known images and emojis from online.
-
-If the user is logged in already, show the get started button to say "Dashboard" or "Profile" instead to take them there.
-
-## Responsiveness and formatting
-
-Make sure pages are wrapped in a container to prevent the width stretching out on wide screens. Always make sure they are centered aligned and not off-center.
-
-Always make sure that your designs are mobile responsive. Verify the formatting to ensure it has correct max and min widths as well as mobile responsiveness.
-
-- Always create sidebars for protected dashboard pages and navigate between pages
-- Always create navbars for landing pages
-- On these bars, the created logo should be clickable and redirect to the index page
-
-## Animating with Framer Motion
-
-You must add animations to components using Framer Motion. It is already installed and configured in the project.
-
-To use it, import the `motion` component from `framer-motion` and use it to wrap the component you want to animate.
-
-
-### Other Items to animate
-- Fade in and Fade Out
-- Slide in and Slide Out animations
-- Rendering animations
-- Button clicks and UI elements
-
-Animate for all components, including on landing page and app pages.
-
-## Three JS Graphics
-
-Your app comes with three js by default. You can use it to create 3D graphics for landing pages, games, etc.
-
-
-## Colors
-
-You can override colors in: `src/index.css`
-
-This uses the oklch color format for tailwind v4.
-
-Always use these color variable names.
-
-Make sure all ui components are set up to be mobile responsive and compatible with both light and dark mode.
-
-Set theme using `dark` or `light` variables at the parent className.
-
-## Styling and Theming
-
-When changing the theme, always change the underlying theme of the shad cn components app-wide under `src/components/ui` and the colors in the index.css file.
-
-Avoid hardcoding in colors unless necessary for a use case, and properly implement themes through the underlying shad cn ui components.
-
-When styling, ensure buttons and clickable items have pointer-click on them (don't by default).
-
-Always follow a set theme style and ensure it is tuned to the user's liking.
-
-## Toasts
-
-You should always use toasts to display results to the user, such as confirmations, results, errors, etc.
-
-Use the shad cn Sonner component as the toaster. For example:
-
-```
-import { toast } from "sonner"
-
-import { Button } from "@/components/ui/button"
-export function SonnerDemo() {
-  return (
-    <Button
-      variant="outline"
-      onClick={() =>
-        toast("Event has been created", {
-          description: "Sunday, December 03, 2023 at 9:00 AM",
-          action: {
-            label: "Undo",
-            onClick: () => console.log("Undo"),
-          },
-        })
-      }
-    >
-      Show Toast
-    </Button>
-  )
-}
+```text
+Warehouse Data
+      ↓
+Identify Issues
+      ↓
+Analyze Impact
+      ↓
+What-If Simulation
+      ↓
+Better Decision
 ```
 
-Remember to import { toast } from "sonner". Usage: `toast("Event has been created.")`
+This decision-support approach is the core concept behind WarehouseOS.
 
-## Dialogs
+---
 
-Always ensure your larger dialogs have a scroll in its content to ensure that its content fits the screen size. Make sure that the content is not cut off from the screen.
+## 🛠️ Technology Stack
 
-Ideally, instead of using a new page, use a Dialog instead. 
+WarehouseOS is built using a modern full-stack web architecture.
 
-# Using the Convex backend
+| Technology          | Purpose                       |
+| ------------------- | ----------------------------- |
+| **React 19**        | Frontend application          |
+| **TypeScript**      | Type-safe development         |
+| **Vite**            | Frontend build tooling        |
+| **React Router v7** | Application routing           |
+| **Tailwind CSS v4** | Styling and responsive design |
+| **Shadcn UI**       | Reusable interface components |
+| **Lucide Icons**    | Interface icons               |
+| **Convex**          | Backend and database          |
+| **Convex Auth**     | Authentication                |
+| **Framer Motion**   | UI animations                 |
+| **Three.js**        | 3D graphics and experiences   |
 
-You will be implementing the convex backend. Follow your knowledge of convex and the documentation to implement the backend.
+The project uses **Bun** as its package manager.
 
-## The Convex Schema
+---
 
-You must correctly follow the convex schema implementation.
+## 🏗️ Architecture
 
-The schema is defined in `src/convex/schema.ts`.
-
-Do not include the `_id` and `_creationTime` fields in your queries (it is included by default for each table).
-Do not index `_creationTime` as it is indexed for you. Never have duplicate indexes.
-
-
-## Convex Actions: Using CRUD operations
-
-When running anything that involves external connections, you must use a convex action with "use node" at the top of the file.
-
-You cannot have queries or mutations in the same file as a "use node" action file. Thus, you must use pre-built queries and mutations in other files.
-
-You can also use the pre-installed internal crud functions for the database:
-
-```ts
-// in convex/users.ts
-import { crud } from "convex-helpers/server/crud";
-import schema from "./schema.ts";
-
-export const { create, read, update, destroy } = crud(schema, "users");
-
-// in some file, in an action:
-const user = await ctx.runQuery(internal.users.read, { id: userId });
-
-await ctx.runMutation(internal.users.update, {
-  id: userId,
-  patch: {
-    status: "inactive",
-  },
-});
+```text
+                    ┌──────────────────────┐
+                    │      WarehouseOS     │
+                    │      Web Client      │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │     React 19 + Vite  │
+                    │     TypeScript       │
+                    └──────────┬───────────┘
+                               │
+             ┌─────────────────┼─────────────────┐
+             │                 │                 │
+             ▼                 ▼                 ▼
+        Dashboard         Simulation          Analytics
+             │                 │                 │
+             └─────────────────┼─────────────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │       Convex         │
+                    │ Backend + Database    │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │    Convex Auth       │
+                    │ Authentication       │
+                    └──────────────────────┘
 ```
 
+---
 
-## Common Convex Mistakes To Avoid
+## 📂 Project Structure
 
-When using convex, make sure:
-- Document IDs are referenced as `_id` field, not `id`.
-- Document ID types are referenced as `Id<"TableName">`, not `string`.
-- Document object types are referenced as `Doc<"TableName">`.
-- Keep schemaValidation to false in the schema file.
-- You must correctly type your code so that it passes the type checker.
-- You must handle null / undefined cases of your convex queries for both frontend and backend, or else it will throw an error that your data could be null or undefined.
-- Always use the `@/folder` path, with `@/convex/folder/file.ts` syntax for importing convex files.
-- This includes importing generated files like `@/convex/_generated/server`, `@/convex/_generated/api`
-- Remember to import functions like useQuery, useMutation, useAction, etc. from `convex/react`
-- NEVER have return type validators.
+The main application code is organized inside the `src` directory.
+
+```text
+WarehouseOS/
+│
+├── src/
+│   ├── components/
+│   │   ├── ui/
+│   │   └── ...
+│   │
+│   ├── pages/
+│   │   ├── Auth.tsx
+│   │   └── ...
+│   │
+│   ├── convex/
+│   │   ├── auth/
+│   │   ├── schema.ts
+│   │   └── ...
+│   │
+│   ├── hooks/
+│   ├── main.tsx
+│   └── index.css
+│
+├── public/
+├── package.json
+└── README.md
+```
+
+---
+
+## 🔐 Authentication & Security
+
+WarehouseOS uses **Convex Auth** for authentication.
+
+The current authentication setup supports:
+
+* Email OTP authentication
+* Anonymous users
+* Protected application routes
+* Authenticated user state
+* Backend authorization checks
+
+The application uses a dedicated `/auth` route for authentication flows, while protected routes can redirect unauthenticated users to authentication before continuing to the requested page.
+
+---
+
+## ⚙️ Environment Configuration
+
+WarehouseOS uses environment variables for its Convex deployment and authentication configuration.
+
+### Client-side variables
+
+```env
+CONVEX_DEPLOYMENT=
+VITE_CONVEX_URL=
+```
+
+### Convex backend variables
+
+```env
+JWKS=
+JWT_PRIVATE_KEY=
+SITE_URL=
+```
+
+The project already contains separate client-side and Convex backend environment configurations.
+
+> **Important:** Never commit production secrets, private keys, authentication credentials, or environment files containing sensitive values to a public repository.
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+Make sure you have:
+
+* Node.js
+* Bun
+* A Convex project
+* Required environment variables
+
+### 1. Clone the repository
+
+```bash
+git clone <YOUR_REPOSITORY_URL>
+cd WarehouseOS
+```
+
+### 2. Install dependencies
+
+```bash
+bun install
+```
+
+### 3. Configure environment variables
+
+Create the required environment configuration and provide your Convex deployment values.
+
+```env
+CONVEX_DEPLOYMENT=your_deployment
+VITE_CONVEX_URL=your_convex_url
+```
+
+Configure the required Convex authentication environment variables on the backend.
+
+### 4. Start the development server
+
+```bash
+bun run dev
+```
+
+The application should then be available through the local development URL provided by Vite.
+
+---
+
+## 🧪 Development
+
+WarehouseOS follows a component-based React architecture.
+
+Recommended locations:
+
+```text
+src/pages       → Application pages
+src/components  → Reusable components
+src/components/ui → Shadcn UI primitives
+src/convex      → Backend functionality
+src/hooks       → Reusable React hooks
+```
+
+The project follows responsive design principles and uses reusable Shadcn components throughout the interface.
+
+---
+
+## 🎯 Hackathon Context
+
+### Prompt Wars X Work Wizards Innovations Hackathon 2026
+
+WarehouseOS was created as a **solo hackathon project** for:
+
+**Prompt Wars X Work Wizards Innovations Hackathon 2026**
+
+The hackathon focuses on building innovative AI-powered prototypes using modern **Vibe Coding** approaches to solve real-world problems.
+
+WarehouseOS explores this approach in the warehouse-management domain by combining:
+
+* AI-assisted development
+* Modern web technologies
+* Interactive dashboards
+* Operational analytics
+* What-If simulation
+* Decision-support concepts
+
+---
+
+## 🌟 Project Vision
+
+WarehouseOS aims to move warehouse management from:
+
+**Reactive → Proactive**
+
+Instead of waiting for operational problems to become serious, the platform is designed around the idea of identifying issues early and exploring possible solutions.
+
+### Vision
+
+> **Make warehouse operations more visible, predictable, and decision-driven.**
+
+---
+
+## 🔮 Future Improvements
+
+Potential future enhancements include:
+
+* AI-powered operational recommendations
+* Predictive inventory forecasting
+* Demand prediction
+* Automated anomaly detection
+* Advanced warehouse simulations
+* Real-time IoT integration
+* Barcode and QR scanning
+* Workforce optimization
+* Automated report generation
+* Advanced role-based access control
+* Integration with existing warehouse management systems
+
+---
+
+## 📈 Future AI Capabilities
+
+A future version of WarehouseOS could introduce an intelligent warehouse assistant capable of answering questions such as:
+
+```text
+"Which orders are currently at risk?"
+
+"Why is the fulfillment backlog increasing?"
+
+"What happens if I increase warehouse staff by 20%?"
+
+"Which products are likely to run out of stock?"
+
+"What operational issue should I prioritize?"
+```
+
+The goal would be to turn WarehouseOS from a monitoring platform into a more comprehensive **AI-powered warehouse decision system**.
+
+---
+
+## 👨‍💻 Built By
+
+**Venkatesh Tambabathula**
+
+Cybersecurity & Software Development Student
+AI • Full-Stack Development • Cybersecurity • Vibe Coding
+
+Built as a **solo project** for the Prompt Wars X Work Wizards Innovations Hackathon 2026.
+
+---
+
+## 🙏 Acknowledgements
+
+Special thanks to:
+
+* **Work Wizards Innovations Pvt. Ltd.**
+* **Hack2skill**
+* **Google for Developers**
+
+for organizing the **Prompt Wars X Work Wizards Innovations Hackathon 2026** and providing an opportunity to experiment with AI-powered development and real-world problem solving.
+
+---
+
+## 📄 License
+
+This project is created for educational, experimental, and hackathon purposes.
+
+Add your preferred license here if the repository is intended for public open-source distribution.
+
+---
+
+## ⭐ Support the Project
+
+If you find WarehouseOS interesting:
+
+* ⭐ Star the repository
+* 🐛 Report issues
+* 💡 Suggest improvements
+* 🔀 Contribute ideas
+* 📢 Share the project
+
+**WarehouseOS — Understand. Simulate. Decide.**
+
+[🚀 Try WarehouseOS Live](https://smartwarehousesight.freebuff.app/?utm_source=chatgpt.com)
