@@ -51,6 +51,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { StrategyComparisonPanel } from "./StrategyComparison";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -845,7 +846,8 @@ export default function Simulator() {
                     <span className="text-[10px] font-bold tracking-[0.14em] text-muted-foreground">after Run simulation</span>
                   </div>
                 </CardHeader>
-                <CardContent className="pt-5">
+                <CardContent className="space-y-4 pt-5">
+                  <BeforeAfterGauges report={report} />
                   <BeforeAfterTable report={report} />
                 </CardContent>
               </Card>
@@ -883,6 +885,12 @@ export default function Simulator() {
                     color="border-l-emerald-500"
                     title={report.resolution.title}
                     items={report.resolution.items}
+                  />
+                  <ExecutePanel
+                    report={report}
+                    canApply={validation.ok && hasAnyInput}
+                    applying={applying}
+                    onApply={apply}
                   />
                 </CardContent>
               </Card>
@@ -1001,7 +1009,7 @@ export default function Simulator() {
           )}
 
           {/* strategy comparison — available on its own action, independent of Run */}
-          {compareVisible && compare && <StrategyComparison compare={compare} />}
+          {compareVisible && compare && <StrategyComparisonPanel compare={compare} />}
 
           {runPhase === "idle" && !compareVisible && (
             <Card className="border-border/70 shadow-none">
@@ -1219,6 +1227,187 @@ function ImpactCard({
         </ul>
       </CardContent>
     </Card>
+  );
+}
+
+/* ------------------------------------------- §5 visual before/after gauges */
+
+function GaugeCard({
+  label,
+  cur,
+  sim,
+  pct,
+  tone,
+  delta,
+  note,
+}: {
+  label: string;
+  cur: string;
+  sim: string;
+  pct: number;
+  tone: "emerald" | "amber" | "red" | "blue";
+  delta?: { label: string; tone: "good" | "bad" | "neutral" };
+  note?: string;
+}) {
+  const barCls =
+    tone === "emerald" ? "bg-emerald-500" : tone === "amber" ? "bg-amber-500" : tone === "red" ? "bg-swissred" : "bg-swissblue";
+  const deltaCls =
+    delta?.tone === "good" ? "text-emerald-300" : delta?.tone === "bad" ? "text-swissred" : "text-muted-foreground";
+  return (
+    <div className="bg-card p-4">
+      <p className="micro-label">{label}</p>
+      <div className="mt-2 flex items-baseline justify-between gap-2">
+        <span className="tnum text-[10px] text-muted-foreground">cur {cur}</span>
+        <div className="flex items-baseline gap-2">
+          <span className="tnum text-lg font-bold text-foreground">{sim}</span>
+          {delta && <span className={cn("tnum text-[10px] font-bold", deltaCls)}>{delta.label}</span>}
+        </div>
+      </div>
+      <div className="mt-2 h-1.5 w-full bg-border/60">
+        <div className={cn("h-full", barCls)} style={{ width: `${Math.max(0, Math.min(100, pct))}%` }} />
+      </div>
+      {note && <p className="mt-1.5 text-[10px] leading-4 text-muted-foreground">{note}</p>}
+    </div>
+  );
+}
+
+function BeforeAfterGauges({ report }: { report: SimulationReport }) {
+  const cm = report.currentMetrics;
+  const sm = report.simulatedMetrics;
+  const onHand = Math.max(0, sm.stockOnHand);
+  const availPct = onHand > 0 ? Math.min(100, Math.round((sm.stockAvailable / onHand) * 100)) : 0;
+  const capPerH = report.capacity.pickers * report.capacity.pickingCapacity;
+  const pickHoursPct = Number.isFinite(sm.pickHours) ? Math.min(100, Math.round((sm.pickHours / 8) * 100)) : 100;
+  const rateDelta = sm.fulfillmentRate - cm.fulfillmentRate;
+  const revenueDelta = report.revenueAtRiskAfter - report.revenueAtRiskBefore;
+  const rateTone = sm.fulfillmentRate >= 95 ? "emerald" : sm.fulfillmentRate >= 75 ? "amber" : "red";
+  const pickTone = sm.bottleneckLevel === "critical" ? "red" : sm.bottleneckLevel === "warning" ? "amber" : "emerald";
+  const availTone = availPct >= 60 ? "emerald" : availPct >= 30 ? "amber" : "red";
+  const revTone = revenueDelta > 0 ? "red" : revenueDelta < 0 ? "emerald" : "blue";
+
+  return (
+    <div className="grid gap-px border border-border/70 bg-border/40 sm:grid-cols-2 xl:grid-cols-4">
+      <GaugeCard
+        label="Fulfillment rate"
+        cur={`${cm.fulfillmentRate}%`}
+        sim={`${sm.fulfillmentRate}%`}
+        pct={sm.fulfillmentRate}
+        tone={rateTone}
+        delta={rateDelta === 0 ? undefined : { label: `${signed(rateDelta)}pp`, tone: rateDelta > 0 ? "good" : "bad" }}
+        note={`${fmtNumber(sm.unitsAllocated)} of ${fmtNumber(sm.unitsAllocated + sm.backorderedUnits)} ordered units allocated`}
+      />
+      <GaugeCard
+        label="Picking workload"
+        cur={`${fmtNumber(cm.pickingWorkload)} u`}
+        sim={`${fmtNumber(sm.pickingWorkload)} u`}
+        pct={pickHoursPct}
+        tone={pickTone}
+        delta={sm.bottleneckLevel === "none" ? undefined : { label: bottleneckLabel(sm.bottleneckLevel), tone: sm.bottleneckLevel === "critical" ? "bad" : "neutral" }}
+        note={`clears in ${fmtHours(sm.pickHours)} at ${fmtNumber(capPerH)} u/h · ${bottleneckLabel(sm.bottleneckLevel).toLowerCase()} bottleneck`}
+      />
+      <GaugeCard
+        label="Available stock"
+        cur={`${fmtNumber(cm.stockAvailable)} u`}
+        sim={`${fmtNumber(sm.stockAvailable)} u`}
+        pct={availPct}
+        tone={availTone}
+        delta={
+          sm.stockAvailable === cm.stockAvailable
+            ? undefined
+            : { label: signed(sm.stockAvailable - cm.stockAvailable), tone: sm.stockAvailable > cm.stockAvailable ? "good" : "bad" }
+        }
+        note={`of ${fmtNumber(sm.stockOnHand)} on hand · ${fmtNumber(sm.stockReserved)} reserved`}
+      />
+      <GaugeCard
+        label="Revenue at risk"
+        cur={fmtCurrency(report.revenueAtRiskBefore)}
+        sim={fmtCurrency(report.revenueAtRiskAfter)}
+        pct={report.revenueAtRiskBefore > 0 ? Math.min(100, Math.round((report.revenueAtRiskAfter / report.revenueAtRiskBefore) * 100)) : 0}
+        tone={revTone}
+        delta={revenueDelta === 0 ? undefined : { label: fmtSignedMoney(revenueDelta), tone: revenueDelta > 0 ? "bad" : "good" }}
+        note={`captured vs FIFO ${fmtSignedMoney(report.capturedVsFifo.delta)}`}
+      />
+    </div>
+  );
+}
+
+/* ------------------------------------------------ §6 execute the decision */
+
+function ExecutePanel({
+  report,
+  canApply,
+  applying,
+  onApply,
+}: {
+  report: SimulationReport;
+  canApply: boolean;
+  applying: boolean;
+  onApply: () => void;
+}) {
+  const { inputs, simulatedMetrics, resolution } = report;
+
+  const commitItems: string[] = [];
+  if (inputs.addLines.length > 0) {
+    commitItems.push(`${inputs.addLines.length} new order line(s) created (SIM-series)`);
+  }
+  const damagedQty = inputs.damagedUnits.reduce((s, d) => s + d.qty, 0);
+  if (damagedQty > 0) commitItems.push(`${damagedQty} damaged unit(s) written off`);
+  const missingQty = inputs.missingUnits.reduce((s, d) => s + d.qty, 0);
+  if (missingQty > 0) commitItems.push(`${missingQty} missing unit(s) adjusted pending cycle count`);
+  if (inputs.incomingStock.length > 0) commitItems.push(`${inputs.incomingStock.length} restock line(s) received`);
+  if (inputs.priorityOverrides.length > 0) commitItems.push(`${inputs.priorityOverrides.length} priority change(s)`);
+  if (inputs.orderDelays.length > 0) commitItems.push(`${inputs.orderDelays.length} deadline delay(s)`);
+  if (commitItems.length === 0) commitItems.push("Capacity-only scenario — no stock or order mutations");
+  commitItems.push("Allocation wave re-run through the shared engine");
+
+  const resolutionText = resolution.items.join(" ").toLowerCase();
+  const manual: string[] = [];
+  if (resolutionText.includes("po")) manual.push("Raise / expedite the purchase order with the supplier");
+  if (resolutionText.includes("crisis")) manual.push("Approve the reallocation in Crisis Mode");
+  if (simulatedMetrics.bottleneckLevel !== "none") manual.push("Add picking capacity or pickers before the next wave");
+  if (manual.length === 0) manual.push("No manual intervention required");
+
+  return (
+    <div className="border-t border-border/60 pt-4">
+      <div className="flex items-center gap-2">
+        <Zap className="size-4 text-blue-300" />
+        <p className="micro-label">Execute the decision</p>
+      </div>
+      <div className="mt-3 grid gap-4 md:grid-cols-2">
+        <div className="border border-border/50 bg-background/50 p-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Commits to the warehouse</p>
+          <ul className="mt-2 space-y-1.5">
+            {commitItems.map((item, i) => (
+              <li key={i} className="flex items-start gap-2 text-xs leading-5 text-muted-foreground">
+                <CheckCircle2 className="mt-1 size-3 shrink-0 text-emerald-400" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="border border-border/50 bg-background/50 p-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Requires operator action</p>
+          <ul className="mt-2 space-y-1.5">
+            {manual.map((item, i) => (
+              <li key={i} className="flex items-start gap-2 text-xs leading-5 text-muted-foreground">
+                <Wrench className="mt-1 size-3 shrink-0 text-amber-300" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="max-w-md text-[10px] leading-4 text-muted-foreground">
+          Capacity knobs (pickers, rates, disruption) are what-if parameters and are not persisted.
+          {!canApply && " This scenario only changes capacity — nothing to commit."}
+        </p>
+        <Button type="button" className="gap-2" onClick={onApply} disabled={!canApply || applying}>
+          {applying ? <Loader2 className="size-4 animate-spin" /> : <Zap className="size-4" />}
+          {applying ? "Applying…" : "Apply to warehouse"}
+        </Button>
+      </div>
+    </div>
   );
 }
 
