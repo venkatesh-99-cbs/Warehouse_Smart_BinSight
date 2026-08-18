@@ -176,78 +176,46 @@ function shortfallAlertInput(
 }
 
 /**
- * §7.2 core loop (steps 1–3) plus the §7.2.4 stock/§7.4 deadline scans.
- * Pure: clones its inputs, allocates greedily against `computeReserved`
- * recomputed from the in-progress order set (never a stale cached value —
- * §11.3), and returns updated state plus side effects. The Simulator calls
- * this exact function (§7.6.1).
+ * Shared classification after an order's allocation pass: fully covered →
+ * `allocated` (+ resolve its shortfall alert), partially granted → `review` +
+ * shortfall alert, nothing granted → stays open + shortfall alert. Used by the
+ * greedy engine AND the fair-allocation strategy so status transitions and
+ * alerts can never diverge (§0.4).
  */
-function runAllocationEngine(
-  products: ProductState[],
-  orders: OrderState[],
-  now: number,
-  comparator: OrderComparator,
-): WaveResult {
-  const prods = products.map((p) => ({ ...p }));
-  const ords = orders.map((o) => ({ ...o, items: o.items.map((i) => ({ ...i })) }));
-  const productById = new Map(prods.map((p) => [p._id, p]));
-  const alerts: AlertInput[] = [];
-  const resolveDedupeKeys: string[] = [];
-  const changedOrderIds: Id<"orders">[] = [];
-
-  const scored = ords
-    .filter((o) => o.status === "pending" || o.status === "review")
-    .map((order) => ({ order, score: scoreOrder(order, now) }));
-  scored.sort(comparator);
-
-  let processed = 0;
-  let fullyAllocated = 0;
-  let partial = 0;
-  let blocked = 0;
-
-  for (const { order } of scored) {
-    processed += 1;
-    let changed = false;
-    let anyGrant = false;
-    let covered = true;
-    for (const item of order.items) {
-      const shortfall = Math.max(0, item.qty - item.allocated);
-      if (shortfall <= 0) continue;
-      const product = productById.get(item.productId);
-      if (!product) continue;
-      const available = Math.max(0, product.onHand - computeReserved(item.productId, ords));
-      const grant = Math.min(shortfall, available);
-      if (grant > 0) {
-        item.allocated += grant;
-        anyGrant = true;
-        changed = true;
-      }
-      if (item.qty - item.allocated > 0) covered = false;
+function classifyAllocated(
+  order: OrderState,
+  covered: boolean,
+  anyGrant: boolean,
+  alerts: AlertInput[],
+  resolveDedupeKeys: string[],
+  changedOrderIds: Id<"orders">[],
+  productById: Map<Id<"products">, ProductState>,
+): "allocated" | "review" | "blocked" {
+  if (covered && order.items.length > 0) {
+    if (order.status !== "allocated") {
+      order.status = "allocated";
+      changedOrderIds.push(order._id);
     }
-    if (covered && order.items.length > 0) {
-      if (order.status !== "allocated") {
-        order.status = "allocated";
-        changed = true;
-      }
-      fullyAllocated += 1;
-      resolveDedupeKeys.push(`shortfall:${order._id}`);
-    } else if (anyGrant) {
-      if (order.status !== "review") {
-        order.status = "review";
-        changed = true;
-      }
-      partial += 1;
-      alerts.push(shortfallAlertInput(order, productById));
-    } else {
-      blocked += 1;
-      alerts.push(shortfallAlertInput(order, productById));
-    }
-    if (changed) changedOrderIds.push(order._id);
+    resolveDedupeKeys.push(`shortfall:${order._id}`);
+    return "allocated";
   }
+  if (anyGrant) {
+    if (order.status !== "review") {
+      order.status = "review";
+      changedOrderIds.push(order._id);
+    }
+    alerts.push(shortfallAlertInput(order, productById));
+    return "review";
+  }
+  alerts.push(shortfallAlertInput(order, productById));
+  return "blocked";
+}
 
-  // §7.2.4 — stock scans (low_stock / stockout / reorder_due)
-  for (const p of prods) {
-    const demand = openDemand(p._id, ords);
+/** §7.2.4 stock scans (low_stock / stockout / reorder_due) — shared by every strategy run. */
+export function stockScanAlerts(products: ProductState[], orders: OrderState[]): AlertInput[] {
+  const alerts: AlertInput[] = [];
+  for (const p of products) {
+    const demand = openDemand(p._id, orders);
     if (p.onHand <= 0) {
       alerts.push({
         type: "stockout",
@@ -284,9 +252,13 @@ function runAllocationEngine(
       });
     }
   }
+  return alerts;
+}
 
-  // §7.4 — deadline guard: open deadline_risk alert for open orders <24h out
-  for (const o of ords) {
+/** §7.4 deadline guard — deadline_risk alert for open orders <24h out. */
+export function deadlineRiskAlerts(orders: OrderState[], now: number): AlertInput[] {
+  const alerts: AlertInput[] = [];
+  for (const o of orders) {
     if (!OPEN_ORDER_STATUSES.includes(o.status)) continue;
     const hours = (o.deadline - now) / 3_600_000;
     if (hours < 0 || hours >= 24) continue;
@@ -301,6 +273,68 @@ function runAllocationEngine(
       dedupeKey: `deadline_risk:${o._id}`,
     });
   }
+  return alerts;
+}
+
+/**
+ * §7.2 core loop (steps 1–3) plus the §7.2.4 stock/§7.4 deadline scans.
+ * Pure: clones its inputs, allocates greedily against `computeReserved`
+ * recomputed from the in-progress order set (never a stale cached value —
+ * §11.3), and returns updated state plus side effects. The Simulator calls
+ * this exact function (§7.6.1).
+ */
+function runAllocationEngine(
+  products: ProductState[],
+  orders: OrderState[],
+  now: number,
+  comparator: OrderComparator,
+): WaveResult {
+  const prods = products.map((p) => ({ ...p }));
+  const ords = orders.map((o) => ({ ...o, items: o.items.map((i) => ({ ...i })) }));
+  const productById = new Map(prods.map((p) => [p._id, p]));
+  const alerts: AlertInput[] = [];
+  const resolveDedupeKeys: string[] = [];
+  const changedOrderIds: Id<"orders">[] = [];
+
+  const scored = ords
+    .filter((o) => o.status === "pending" || o.status === "review")
+    .map((order) => ({ order, score: scoreOrder(order, now) }));
+  scored.sort(comparator);
+
+  let processed = 0;
+  let fullyAllocated = 0;
+  let partial = 0;
+  let blocked = 0;
+
+  for (const { order } of scored) {
+    processed += 1;
+    let anyGrant = false;
+    let covered = true;
+    for (const item of order.items) {
+      const shortfall = Math.max(0, item.qty - item.allocated);
+      if (shortfall <= 0) continue;
+      const product = productById.get(item.productId);
+      if (!product) continue;
+      const available = Math.max(0, product.onHand - computeReserved(item.productId, ords));
+      const grant = Math.min(shortfall, available);
+      if (grant > 0) {
+        item.allocated += grant;
+        anyGrant = true;
+      }
+      if (item.qty - item.allocated > 0) covered = false;
+    }
+    const cls = classifyAllocated(order, covered, anyGrant, alerts, resolveDedupeKeys, changedOrderIds, productById);
+    if (cls === "allocated") fullyAllocated += 1;
+    else if (cls === "review") partial += 1;
+    else blocked += 1;
+  }
+
+  // §7.2.4 — stock scans (low_stock / stockout / reorder_due); shared helper so
+  // every strategy run produces identical inventory alerts (§0.4).
+  alerts.push(...stockScanAlerts(prods, ords));
+
+  // §7.4 — deadline guard: deadline_risk alert for open orders <24h out
+  alerts.push(...deadlineRiskAlerts(ords, now));
 
   const decisions: DecisionInput[] = [
     {
@@ -341,6 +375,151 @@ export function runFifoAllocation(
   now: number,
 ): WaveResult {
   return runAllocationEngine(products, orders, now, fifoComparator);
+}
+
+/* ------------------------------------------- strategy allocators (§7.6 compare) */
+
+export type AllocationStrategy = "score" | "priority" | "deadline";
+
+/**
+ * Comparator per named strategy — deterministic, tie-breaks documented inline.
+ * Used by the Simulator's Compare Strategies (§4 of the simulator spec).
+ */
+function strategyComparator(strategy: AllocationStrategy): OrderComparator {
+  switch (strategy) {
+    case "score":
+      return waveComparator;
+    case "priority":
+      // Priority First: highest priority weight first; ties → earliest deadline, then FIFO.
+      return (a, b) =>
+        PRIORITY_WEIGHT[b.order.priority] - PRIORITY_WEIGHT[a.order.priority] ||
+        a.order.deadline - b.order.deadline ||
+        a.order.createdAt - b.order.createdAt;
+    case "deadline":
+      // Deadline First: earliest deadline first; ties → highest priority, then FIFO.
+      return (a, b) =>
+        a.order.deadline - b.order.deadline ||
+        PRIORITY_WEIGHT[b.order.priority] - PRIORITY_WEIGHT[a.order.priority] ||
+        a.order.createdAt - b.order.createdAt;
+  }
+}
+
+/** Run the §7.2 engine with a named strategy (used by the strategy comparison). */
+export function runAllocationWaveWith(
+  products: ProductState[],
+  orders: OrderState[],
+  now: number,
+  strategy: AllocationStrategy,
+): WaveResult {
+  return runAllocationEngine(products, orders, now, strategyComparator(strategy));
+}
+
+/**
+ * Fair Allocation strategy (§7.6): per SKU, distribute available units across
+ * every order with unmet demand in proportion to that order's demand; the
+ * integer remainder goes to the largest fractional share (ties → earliest
+ * deadline). Status transitions + alerts reuse the shared classifier so the
+ * four strategies can never diverge in bookkeeping (§0.4).
+ */
+export function runFairAllocation(
+  products: ProductState[],
+  orders: OrderState[],
+  now: number,
+): WaveResult {
+  const prods = products.map((p) => ({ ...p }));
+  const ords = orders.map((o) => ({ ...o, items: o.items.map((i) => ({ ...i })) }));
+  const productById = new Map(prods.map((p) => [p._id, p]));
+  const alerts: AlertInput[] = [];
+  const resolveDedupeKeys: string[] = [];
+  const changedOrderIds: Id<"orders">[] = [];
+
+  const queue = ords.filter((o) => o.status === "pending" || o.status === "review");
+
+  for (const p of prods) {
+    const available = Math.max(0, p.onHand - computeReserved(p._id, ords));
+    if (available <= 0) continue;
+    const demanders = queue
+      .map((order) => ({ order, item: order.items.find((i) => i.productId === p._id) }))
+      .filter(
+        (d): d is { order: OrderState; item: OrderState["items"][number] } =>
+          !!d.item && d.item.qty - d.item.allocated > 0,
+      )
+      .sort((a, b) => a.order.createdAt - b.order.createdAt);
+    if (demanders.length === 0) continue;
+    const totalDemand = demanders.reduce((s, d) => s + (d.item.qty - d.item.allocated), 0);
+    if (available >= totalDemand) {
+      for (const d of demanders) d.item.allocated = d.item.qty;
+      continue;
+    }
+    const shares = demanders.map((d) => {
+      const unmet = d.item.qty - d.item.allocated;
+      return { d, unmet, share: (available * unmet) / totalDemand };
+    });
+    let remaining = available;
+    for (const s of shares) {
+      const grant = Math.min(s.unmet, Math.floor(s.share));
+      s.d.item.allocated += grant;
+      remaining -= grant;
+    }
+    shares.sort(
+      (a, b) =>
+        b.share - Math.floor(b.share) - (a.share - Math.floor(a.share)) ||
+        a.d.order.deadline - b.d.order.deadline,
+    );
+    for (const s of shares) {
+      if (remaining <= 0) break;
+      const grant = Math.min(remaining, s.d.item.qty - s.d.item.allocated);
+      s.d.item.allocated += grant;
+      remaining -= grant;
+    }
+  }
+
+  let fullyAllocated = 0;
+  let partial = 0;
+  let blocked = 0;
+  for (const order of queue) {
+    let anyGrant = false;
+    let covered = true;
+    for (const item of order.items) {
+      if (item.allocated > 0 && item.qty - item.allocated > 0) anyGrant = true;
+      if (item.qty - item.allocated > 0) covered = false;
+    }
+    const cls = classifyAllocated(
+      order,
+      covered,
+      anyGrant,
+      alerts,
+      resolveDedupeKeys,
+      changedOrderIds,
+      productById,
+    );
+    if (cls === "allocated") fullyAllocated += 1;
+    else if (cls === "review") partial += 1;
+    else blocked += 1;
+  }
+
+  alerts.push(...stockScanAlerts(prods, ords));
+  alerts.push(...deadlineRiskAlerts(ords, now));
+
+  const decisions: DecisionInput[] = [
+    {
+      kind: "allocation",
+      summary: "Allocation wave executed (fair-share)",
+      detail: `${queue.length} order(s) processed, ${fullyAllocated} fully allocated, ${partial} partially allocated, ${blocked} blocked.`,
+      outcome: `${fullyAllocated} allocated · ${partial} flagged · ${blocked} blocked (fair-share)`,
+      createdAt: now,
+    },
+  ];
+
+  return {
+    products: prods,
+    orders: ords,
+    stats: { processed: queue.length, fullyAllocated, partial, blocked },
+    alerts,
+    resolveDedupeKeys,
+    decisions,
+    changedOrderIds,
+  };
 }
 
 /* --------------------------------------------------- §7.7.3 reallocation plan */
