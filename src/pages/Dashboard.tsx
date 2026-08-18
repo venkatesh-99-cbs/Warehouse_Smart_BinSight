@@ -14,18 +14,21 @@ import { HowItWorks } from "@/components/warehouse/HowItWorks";
 import { Tour, TOUR_KEY } from "@/components/warehouse/Tour";
 import {
   AlertTriangle,
+  Bell,
   Boxes,
+  CalendarDays,
   ClipboardCheck,
   FlaskConical,
   HelpCircle,
   LayoutDashboard,
   LogOut,
   Play,
+  ScrollText,
   ShoppingCart,
   Zap,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -34,18 +37,38 @@ const NAV = [
   { to: "/dashboard/inventory", label: "Inventory", icon: Boxes },
   { to: "/dashboard/orders", label: "Orders", icon: ShoppingCart },
   { to: "/dashboard/operations", label: "Operations", icon: ClipboardCheck },
-  { to: "/dashboard/crisis", label: "Crisis", icon: AlertTriangle, tourId: "tour-crisis-badge" },
-  { to: "/dashboard/simulator", label: "Simulator", icon: FlaskConical, tourId: "tour-sim-nav" },
+  { to: "/dashboard/crisis", label: "Crisis Center", icon: AlertTriangle, tourId: "tour-crisis-badge" },
+  { to: "/dashboard/simulator", label: "What-if Simulator", icon: FlaskConical, tourId: "tour-sim-nav" },
+  { to: "/dashboard/activity", label: "Activity Logs", icon: ScrollText },
 ];
 
 const TITLES: Record<string, string> = {
-  "/dashboard": "Overview",
+  "/dashboard": "Dashboard",
   "/dashboard/inventory": "Inventory",
   "/dashboard/orders": "Orders",
   "/dashboard/operations": "Operations",
-  "/dashboard/crisis": "Crisis Mode",
+  "/dashboard/crisis": "Crisis Center",
   "/dashboard/simulator": "What-if Simulator",
+  "/dashboard/activity": "Activity Logs",
 };
+
+const SUBTITLES: Record<string, string> = {
+  "/dashboard": "Real-time overview of warehouse operations",
+  "/dashboard/inventory": "Stock position, health and reorder activity",
+  "/dashboard/orders": "Order pipeline and fulfilment status",
+  "/dashboard/operations": "Picking, packing and dispatch workflow",
+  "/dashboard/crisis": "What needs attention right now",
+  "/dashboard/simulator": "Test decisions and their impact before committing",
+  "/dashboard/activity": "Audit trail — what happened and who decided it",
+};
+
+function initials(name?: string | null): string {
+  if (!name) return "WM";
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? "";
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : "";
+  return (first + last).toUpperCase() || "WM";
+}
 
 export default function Dashboard() {
   const { user, signOut } = useAuth();
@@ -129,23 +152,25 @@ export default function Dashboard() {
     navigate("/");
   };
 
-  const title = TITLES[location.pathname] ?? "Control deck";
+  const path = location.pathname;
+  const title = TITLES[path] ?? "Control deck";
+  const subtitle = SUBTITLES[path] ?? "Autonomous warehouse decision platform";
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* ------------------------------------------------- sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-border/60 bg-sidebar lg:flex">
         <div className="flex items-center gap-3 border-b border-border/60 px-5 py-5">
-          <span className="flex size-8 items-center justify-center bg-swissred text-white">
+          <span className="flex size-9 items-center justify-center bg-primary text-primary-foreground">
             <Zap className="size-4" />
           </span>
           <div>
-            <p className="text-[13px] leading-4 font-bold tracking-[0.18em] uppercase">WarehouseOS</p>
-            <p className="mono text-[10px] text-muted-foreground">control deck</p>
+            <p className="text-[13px] leading-4 font-bold tracking-[0.14em] uppercase">WarehouseOS</p>
+            <p className="mt-0.5 text-[10px] font-medium text-muted-foreground">Smart Warehouse</p>
           </div>
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
           {NAV.map((item) => (
             <NavLink
               key={item.to}
@@ -154,18 +179,18 @@ export default function Dashboard() {
               id={item.tourId}
               className={({ isActive }) =>
                 cn(
-                  "group flex items-center justify-between px-3 py-2.5 text-[13px] font-semibold transition-colors",
+                  "group flex items-center justify-between border-l-2 px-3 py-2.5 text-[13px] font-semibold transition-colors",
                   isActive
-                    ? "border-l-2 border-swissred bg-accent text-foreground"
-                    : "border-l-2 border-transparent text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                    ? "border-primary bg-primary/10 text-foreground"
+                    : "border-transparent text-muted-foreground hover:bg-accent/60 hover:text-foreground",
                 )
               }
             >
               <span className="flex items-center gap-3">
-                <item.icon className="size-4" />
+                <item.icon className={cn("size-4", "shrink-0")} />
                 {item.label}
               </span>
-              {item.label === "Crisis" && openAlertCount > 0 && (
+              {item.label === "Crisis Center" && openAlertCount > 0 && (
                 <span
                   className={cn(
                     "tnum flex h-5 min-w-5 items-center justify-center px-1 text-[10px] font-bold",
@@ -179,15 +204,22 @@ export default function Dashboard() {
           ))}
         </nav>
 
+        {/* today's snapshot + user profile */}
         <div className="border-t border-border/60 px-5 py-4">
-          <p className="mono text-xl font-bold text-foreground">
+          <p className="micro-label mb-2">Today's snapshot</p>
+          <p className="text-[13px] leading-5 font-bold">
+            {clock.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
+          </p>
+          <p className="mono mt-0.5 text-xs text-muted-foreground">
             {clock.toLocaleTimeString("en-US", { hour12: false })}
           </p>
-          <p className="micro-label mt-1">Local time</p>
-          <div className="mt-4 flex items-center justify-between gap-2">
-            <div className="min-w-0">
+          <div className="mt-4 flex items-center gap-3 border-t border-border/60 pt-4">
+            <span className="flex size-9 shrink-0 items-center justify-center border border-primary/40 bg-primary/15 text-xs font-bold text-primary">
+              {initials(user?.name)}
+            </span>
+            <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-bold">{user?.name ?? "Warehouse Manager"}</p>
-              <p className="truncate text-[11px] text-muted-foreground">{user?.email ?? "Signed in"}</p>
+              <p className="truncate text-[11px] text-muted-foreground">Warehouse Manager</p>
             </div>
             <Button type="button" variant="ghost" size="icon-sm" onClick={handleSignOut} aria-label="Sign out">
               <LogOut className="size-4" />
@@ -203,12 +235,25 @@ export default function Dashboard() {
         {/* mobile top bar */}
         <div className="flex items-center justify-between gap-3 border-b border-border/60 px-4 py-3 lg:hidden">
           <div className="flex items-center gap-2">
-            <span className="flex size-7 items-center justify-center bg-swissred text-white">
+            <span className="flex size-7 items-center justify-center bg-primary text-primary-foreground">
               <Zap className="size-3.5" />
             </span>
-            <span className="text-xs font-bold tracking-[0.16em] uppercase">WarehouseOS</span>
+            <div>
+              <p className="text-[11px] leading-3 font-bold tracking-[0.12em] uppercase">WarehouseOS</p>
+              <p className="text-[9px] text-muted-foreground">Smart Warehouse</p>
+            </div>
           </div>
           <div className="flex items-center gap-1.5">
+            <Link to="/dashboard/crisis" aria-label="Crisis Center">
+              <Button type="button" variant="outline" size="icon-sm" className="relative">
+                <Bell className="size-4" />
+                {openAlertCount > 0 && (
+                  <span className="tnum absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center bg-swissred px-0.5 text-[9px] font-bold text-white">
+                    {openAlertCount}
+                  </span>
+                )}
+              </Button>
+            </Link>
             <Button type="button" variant="outline" size="icon-sm" onClick={() => setHowOpen(true)} aria-label="How it works">
               <HelpCircle className="size-4" />
             </Button>
@@ -228,26 +273,40 @@ export default function Dashboard() {
               className={({ isActive }) =>
                 cn(
                   "flex shrink-0 items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold",
-                  isActive ? "bg-swissred text-white" : "text-muted-foreground hover:text-foreground",
+                  isActive ? "bg-primary/15 text-foreground" : "text-muted-foreground hover:text-foreground",
                 )
               }
             >
               <item.icon className="size-3.5" />
               {item.label}
-              {item.label === "Crisis" && openAlertCount > 0 && (
-                <span className="tnum ml-0.5 text-[10px] font-bold">{openAlertCount}</span>
+              {item.label === "Crisis Center" && openAlertCount > 0 && (
+                <span className="tnum ml-0.5 text-[10px] font-bold text-swissred">{openAlertCount}</span>
               )}
             </NavLink>
           ))}
         </nav>
 
         {/* top bar */}
-        <header className="sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-border/60 bg-background/90 px-6 py-3 backdrop-blur">
-          <div>
+        <header className="sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-border/60 bg-background/90 px-6 py-4 backdrop-blur">
+          <div className="min-w-0">
             <h1 className="text-lg font-bold tracking-tight">{title}</h1>
-            <p className="micro-label mt-0.5 hidden sm:block">Autonomous warehouse decision platform</p>
+            <p className="micro-label mt-0.5 hidden sm:block">{subtitle}</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="hidden items-center gap-1.5 border border-border/60 px-3 py-1.5 text-[11px] font-semibold text-muted-foreground xl:flex">
+              <CalendarDays className="size-3.5" />
+              {clock.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+            </span>
+            <Link to="/dashboard/crisis" aria-label="Open alerts" title={`${openAlertCount} open alert(s)`}>
+              <Button type="button" variant="outline" size="icon" className="relative">
+                <Bell className="size-4" />
+                {openAlertCount > 0 && (
+                  <span className="tnum absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center bg-swissred px-1 text-[9px] font-bold text-white">
+                    {openAlertCount}
+                  </span>
+                )}
+              </Button>
+            </Link>
             <Button
               type="button"
               size="sm"
@@ -258,7 +317,7 @@ export default function Dashboard() {
             >
               {waveRunning ? (
                 <>
-                  <span className="size-3 animate-pulse rounded-none bg-white/80" />
+                  <span className="size-3 animate-pulse bg-white/80" />
                   Running…
                 </>
               ) : (
@@ -282,6 +341,36 @@ export default function Dashboard() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setHowOpen(true)} className="cursor-pointer">
                   How this works
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  aria-label="User menu"
+                  className="flex items-center justify-center border-primary/40 bg-primary/10 text-xs font-bold text-primary"
+                >
+                  {initials(user?.name)}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 border-border/70">
+                <DropdownMenuLabel>
+                  <p className="truncate text-xs font-bold">{user?.name ?? "Warehouse Manager"}</p>
+                  <p className="truncate text-[11px] font-normal text-muted-foreground">{user?.email ?? "Signed in"}</p>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate("/dashboard/crisis")} className="cursor-pointer">
+                  Crisis Center
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/dashboard/activity")} className="cursor-pointer">
+                  Activity Logs
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
+                  <LogOut className="size-3.5" /> Sign out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

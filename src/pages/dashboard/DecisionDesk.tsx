@@ -72,6 +72,7 @@ export default function DecisionDesk() {
   const orders = useQuery(api.analytics.listOrders);
   const decisionLog = useQuery(api.analytics.listDecisionLog);
   const logDecision = useMutation(api.decisionEngine.logManagerDecision);
+  const logEvent = useMutation(api.activities.logEvent);
   const [searchParams] = useSearchParams();
 
   const [phase, setPhase] = useState<Phase>("situation");
@@ -130,11 +131,29 @@ export default function DecisionDesk() {
     setLogged(false);
     setReason("");
     setPhase("options");
+    // §15 — log that the manager opened the decision review for this order
+    void logEvent({
+      eventType: "decision_review_started",
+      category: "decisions",
+      description: `Manager opened decision review for ${c.order.orderNumber} — ${c.shortage} unit(s) short of ${c.line.sku} (${c.available} of ${c.line.qty} available)`,
+      orderId: c.order._id,
+      sku: c.line.sku,
+      severity: "warning",
+      status: "open",
+    }).catch(() => undefined);
   };
 
   const startSim = async (id: DecisionOptionId) => {
     if (!crisis) return;
     setOptionId(id);
+    // §15 — log which strategy the manager selected
+    void logEvent({
+      eventType: "strategy_selected",
+      category: "decisions",
+      description: `Strategy selected for ${crisis.order.orderNumber}: ${options.find((o) => o.id === id)?.label ?? id}`,
+      orderId: crisis.order._id,
+      status: "selected",
+    }).catch(() => undefined);
     setPhase("running");
     setRunStep(0);
     for (let i = 0; i < RUN_STEPS.length; i++) {
@@ -252,8 +271,18 @@ export default function DecisionDesk() {
                   disabled={!opt.feasible}
                   onClick={() => {
                     setPendingOptionId(opt.id);
-                    if (opt.requiresApproval) setPhase("approval");
-                    else startSim(opt.id);
+                    if (opt.requiresApproval) {
+                      setPhase("approval");
+                      // §15 — log that approval is required for this decision
+                      void logEvent({
+                        eventType: "approval_requested",
+                        category: "decisions",
+                        description: `Approval requested for ${crisis.order.orderNumber}: ${opt.label}`,
+                        orderId: crisis.order._id,
+                        severity: "warning",
+                        status: "pending_approval",
+                      }).catch(() => undefined);
+                    } else startSim(opt.id);
                   }}
                   className={cn(
                     "group w-full border p-4 text-left transition-colors",

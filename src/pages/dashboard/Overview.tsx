@@ -4,6 +4,14 @@ import { computeReserved, OPEN_ORDER_STATUSES, PRIORITY_LABEL, type Priority } f
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertTypeBadge, SeverityBadge, statusLabel } from "@/components/warehouse/badges";
+import {
+  ActivityCategoryBadge,
+  ActivityIcon,
+  fmtActivityTime,
+  humanizeEvent,
+  severityDot,
+  type ActivityDoc,
+} from "@/components/warehouse/ActivityBits";
 import { fmtCurrency, fmtDeadline, fmtNumber, fmtSignedMoney } from "@/lib/format";
 import { motion } from "framer-motion";
 import { Link } from "react-router";
@@ -39,8 +47,9 @@ export default function Overview() {
   const products = useQuery(api.analytics.listProducts);
   const orders = useQuery(api.analytics.listOrders);
   const decisionLog = useQuery(api.analytics.listDecisionLog);
+  const recent = useQuery(api.activities.listActivities, { limit: 6 });
 
-  if (!data || !products || !orders || !decisionLog) {
+  if (!data || !products || !orders || !decisionLog || !recent) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-28 w-full" />
@@ -352,6 +361,29 @@ export default function Overview() {
         </Card>
       </section>
 
+      {/* ================================================ RECENT ACTIVITY */}
+      <section>
+        <h2 className="micro-label mb-3">Recent activity</h2>
+        <Card className="border-border/70 shadow-none">
+          <CardContent className="p-2">
+            {recent.length === 0 ? (
+              <p className="py-10 text-center text-xs text-muted-foreground">No activity recorded yet — run an allocation wave or resolve a crisis to see events here.</p>
+            ) : (
+              <ul className="divide-y divide-border/60">
+                {recent.map((a) => (
+                  <ActivityRow key={a._id} activity={a} />
+                ))}
+              </ul>
+            )}
+            <div className="mt-2 border-t border-border/60 px-3 pt-3">
+              <Link to="/dashboard/activity" className="inline-flex items-center gap-1 text-xs font-bold text-swissblue transition-colors hover:text-blue-300">
+                View all activity <ArrowUpRight className="size-3" />
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
       {/* ================================================ OPERATIONAL INSIGHTS */}
       <section>
         <h2 className="micro-label mb-3">Operational insights</h2>
@@ -374,6 +406,23 @@ export default function Overview() {
 }
 
 /* ------------------------------------------------------------ helpers */
+
+function ActivityRow({ activity }: { activity: ActivityDoc }) {
+  return (
+    <li className="flex items-center gap-3 px-3 py-2.5">
+      <span className={cn("size-1.5 shrink-0 rounded-full", severityDot(activity.severity))} />
+      <span className="tnum w-12 shrink-0 text-[11px] text-muted-foreground">{fmtActivityTime(activity.timestamp)}</span>
+      <p className="min-w-0 flex-1 truncate text-[13px]">
+        <span className="font-bold">{humanizeEvent(activity.eventType)}</span>
+        <span className="text-muted-foreground"> — {activity.description}</span>
+      </p>
+      <span className="hidden shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground sm:flex">
+        <ActivityIcon category={activity.category} className="size-3.5" />
+      </span>
+      <ActivityCategoryBadge category={activity.category} className="hidden px-2 py-0 text-[10px] md:inline-flex" />
+    </li>
+  );
+}
 
 function Kpi({
   label,

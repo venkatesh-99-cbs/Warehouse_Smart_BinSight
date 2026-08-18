@@ -61,6 +61,16 @@ export const alertStatusValidator = v.union(
   v.literal("dismissed"),
 );
 
+export const activityCategoryValidator = v.union(
+  v.literal("orders"),
+  v.literal("inventory"),
+  v.literal("operations"),
+  v.literal("shipments"),
+  v.literal("crisis"),
+  v.literal("decisions"),
+  v.literal("system"),
+);
+
 export const taskStatusValidator = v.union(
   v.literal("pending"),
   v.literal("in_progress"),
@@ -223,6 +233,39 @@ const schema = defineSchema(
     })
       .index("by_created", ["createdAt"])
       .index("by_customer", ["customer"]),
+
+    /* ------------------------------------------------ §13/14 Activity audit trail
+     * One reusable event structure for the Activity Logs center. Every meaningful
+     * mutation writes one row via logActivity(); the UI never fabricates entries.
+     * `metadata` is a JSON string so the shape stays open without nested values. */
+    activities: defineTable({
+      eventType: v.string(),
+      category: activityCategoryValidator,
+      actor: v.optional(v.string()),
+      actorRole: v.optional(v.string()),
+      description: v.string(),
+      entityType: v.optional(
+        v.union(
+          v.literal("order"),
+          v.literal("product"),
+          v.literal("zone"),
+          v.literal("shipment"),
+          v.literal("system"),
+        ),
+      ),
+      entityId: v.optional(v.string()),
+      orderId: v.optional(v.string()),
+      sku: v.optional(v.string()),
+      previousValue: v.optional(v.string()),
+      newValue: v.optional(v.string()),
+      status: v.optional(v.string()),
+      severity: v.optional(alertSeverityValidator),
+      metadata: v.optional(v.string()),
+      timestamp: v.number(),
+    })
+      .index("by_timestamp", ["timestamp"])
+      .index("by_category", ["category"])
+      .index("by_event_type", ["eventType"]),
   },
   {
     schemaValidation: false,

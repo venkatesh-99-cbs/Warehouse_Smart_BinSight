@@ -20,6 +20,7 @@ const Orders = lazy(() => import("./pages/dashboard/Orders.tsx"));
 const Operations = lazy(() => import("./pages/dashboard/Operations.tsx"));
 const Crisis = lazy(() => import("./pages/dashboard/Crisis.tsx"));
 const Simulator = lazy(() => import("./pages/dashboard/Simulator.tsx"));
+const ActivityLogs = lazy(() => import("./pages/dashboard/ActivityLogs.tsx"));
 
 // Simple loading fallback for route transitions
 function RouteLoading() {
@@ -144,6 +145,7 @@ createRoot(document.getElementById("root")!).render(
                 <Route path="operations" element={<Operations />} />
                 <Route path="crisis" element={<Crisis />} />
                 <Route path="simulator" element={<Simulator />} />
+                <Route path="activity" element={<ActivityLogs />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

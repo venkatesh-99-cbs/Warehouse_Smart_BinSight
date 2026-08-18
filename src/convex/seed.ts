@@ -12,6 +12,7 @@
 import { mutation, query, type MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import type { OrderStatus, Priority } from "./domain";
+import { logActivity } from "./activities";
 
 const H = 3_600_000;
 const D = 24 * H;
@@ -790,6 +791,76 @@ export const ensureSeeded = mutation({
       outcome: "STRAP-9M on hand is now 42 (was 22)",
       refId: productIds.get("STRAP-9M"),
       createdAt: now - 1 * D,
+    });
+
+    /* ---- activities (system audit trail reflecting the seeded state) ---- */
+    await logActivity(ctx, {
+      eventType: "system_initialized",
+      category: "system",
+      description: `Warehouse state initialized — ${PRODUCTS.length} products, ${buildOrders(now).length} orders, ${buildAlerts().length} open alerts`,
+      status: "completed",
+      timestamp: now - 5 * 60_000,
+    });
+    await logActivity(ctx, {
+      eventType: "deadline_risk_detected",
+      category: "crisis",
+      description: "URG-2001 flagged — delivery at risk, short 10 of WRT-8800 (0 of 10 allocated)",
+      entityType: "order",
+      entityId: orderIds.get("URG-2001"),
+      orderId: orderIds.get("URG-2001"),
+      severity: "critical",
+      status: "open",
+      timestamp: now - 3 * H,
+    });
+    await logActivity(ctx, {
+      eventType: "stockout_detected",
+      category: "inventory",
+      description: "FIB-OM4 out of stock — 0 units on hand vs reorder point 25",
+      entityType: "product",
+      entityId: productIds.get("FIB-OM4"),
+      sku: "FIB-OM4",
+      severity: "warning",
+      status: "open",
+      timestamp: now - 2.5 * H,
+    });
+    await logActivity(ctx, {
+      eventType: "priority_updated",
+      category: "orders",
+      description: "ORD-4025 priority raised to High — time-critical switch order protected",
+      entityType: "order",
+      entityId: orderIds.get("ORD-4025"),
+      orderId: orderIds.get("ORD-4025"),
+      status: "applied",
+      timestamp: now - 2 * H,
+    });
+    await logActivity(ctx, {
+      eventType: "allocation_wave",
+      category: "decisions",
+      description: "Allocation wave completed — 14 order(s) processed, 10 fully allocated, 2 partial, 2 blocked",
+      status: "completed",
+      timestamp: now - 90 * 60_000,
+    });
+    await logActivity(ctx, {
+      eventType: "reorder_raised",
+      category: "inventory",
+      description: "Reorder raised for FIB-OM4 — PO for 100 units with Meridian Micro Distributors (lead time 7d)",
+      entityType: "product",
+      entityId: productIds.get("FIB-OM4"),
+      sku: "FIB-OM4",
+      severity: "info",
+      status: "open",
+      timestamp: now - 1 * H,
+    });
+    await logActivity(ctx, {
+      eventType: "reallocation_withheld",
+      category: "crisis",
+      description: "URG-2002 reallocation withheld — no trust-safe, profit-positive donor for BAT-LI12",
+      entityType: "order",
+      entityId: orderIds.get("URG-2002"),
+      orderId: orderIds.get("URG-2002"),
+      severity: "warning",
+      status: "open",
+      timestamp: now - 30 * 60_000,
     });
 
     return { seeded: true, refreshed: false };

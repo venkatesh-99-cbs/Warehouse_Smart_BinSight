@@ -9,6 +9,7 @@ import { mutation, type MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import type { OrderState, OrderItemState } from "./domain";
 import { logDecision, resolveAlertByDedupeKey, upsertAlert } from "./alerts";
+import { logActivity } from "./activities";
 
 /* ------------------------------------------------------------ helpers */
 
@@ -65,6 +66,15 @@ export const startPicking = mutation({
       refId: order._id,
       createdAt: now,
     });
+    await logActivity(ctx, {
+      eventType: "picking_started",
+      category: "operations",
+      description: `Picking started for ${order.orderNumber} — ${order.items.length} task(s) created (${order.customer})`,
+      entityType: "order",
+      entityId: order._id,
+      orderId: order._id,
+      status: "picking",
+    });
     return { applied: true };
   },
 });
@@ -81,6 +91,16 @@ export const claimTask = mutation({
       status: "in_progress",
       assignee,
       updatedAt: now,
+    });
+    await logActivity(ctx, {
+      eventType: "task_claimed",
+      category: "operations",
+      description: `${assignee} claimed ${task.sku} at ${task.zone} / ${task.bin}`,
+      entityType: "order",
+      entityId: task.orderId,
+      orderId: task.orderId,
+      sku: task.sku,
+      status: "in_progress",
     });
     return { applied: true };
   },
@@ -138,6 +158,18 @@ export const completeTask = mutation({
       refId: order._id,
       createdAt: now,
     });
+    await logActivity(ctx, {
+      eventType: "picked",
+      category: "operations",
+      description: `Picked ${pickedQty} × ${task.sku} for ${order.orderNumber} (${task.zone} / ${task.bin})`,
+      entityType: "order",
+      entityId: order._id,
+      orderId: order._id,
+      sku: task.sku,
+      previousValue: `${task.picked} picked`,
+      newValue: `${task.picked + pickedQty} of ${task.qty}`,
+      status: pickedQty >= task.qty ? "completed" : "in_progress",
+    });
     return { applied: true, fullyPicked, orderStatus: fullyPicked ? "picked" : order.status };
   },
 });
@@ -160,6 +192,15 @@ export const packOrder = mutation({
       customer: order.customer,
       refId: order._id,
       createdAt: now,
+    });
+    await logActivity(ctx, {
+      eventType: "order_packed",
+      category: "operations",
+      description: `Order ${order.orderNumber} packed — ${order.items.length} line(s) (${order.customer})`,
+      entityType: "order",
+      entityId: order._id,
+      orderId: order._id,
+      status: "packed",
     });
     return { applied: true };
   },
@@ -184,6 +225,15 @@ export const qcOrder = mutation({
       customer: order.customer,
       refId: order._id,
       createdAt: now,
+    });
+    await logActivity(ctx, {
+      eventType: "qc_passed",
+      category: "operations",
+      description: `QC passed for ${order.orderNumber} (${order.customer})`,
+      entityType: "order",
+      entityId: order._id,
+      orderId: order._id,
+      status: "qc",
     });
     return { applied: true };
   },
@@ -217,6 +267,16 @@ export const dispatchOrder = mutation({
       customer: order.customer,
       refId: order._id,
       createdAt: now,
+    });
+    await logActivity(ctx, {
+      eventType: "shipment_dispatched",
+      category: "shipments",
+      description: `Shipment for ${order.orderNumber} dispatched via ${carrier}`,
+      entityType: "order",
+      entityId: order._id,
+      orderId: order._id,
+      newValue: tracking,
+      status: "in_transit",
     });
     return { applied: true };
   },
@@ -261,6 +321,16 @@ export const markDelivered = mutation({
       trustEvent,
       createdAt: now,
     });
+    await logActivity(ctx, {
+      eventType: "shipment_delivered",
+      category: "shipments",
+      description: `Shipment for ${order.orderNumber} delivered — ${trustEvent.replace(/_/g, " ")} (${order.customer})`,
+      entityType: "order",
+      entityId: order._id,
+      orderId: order._id,
+      status: "delivered",
+      severity: trustEvent === "deadline_missed" ? "warning" : "info",
+    });
     return { applied: true, trustEvent };
   },
 });
@@ -304,6 +374,17 @@ export const issueTask = mutation({
       customer: order.customer,
       refId: order._id,
       createdAt: now,
+    });
+    await logActivity(ctx, {
+      eventType: issue === "missing" ? "item_missing" : "item_damaged",
+      category: "crisis",
+      description: `${issue === "missing" ? "Missing" : "Damaged"} item reported on ${order.orderNumber}: ${task.sku} at ${task.bin}`,
+      entityType: "order",
+      entityId: order._id,
+      orderId: order._id,
+      sku: task.sku,
+      severity: "warning",
+      status: "open",
     });
     return { applied: true };
   },

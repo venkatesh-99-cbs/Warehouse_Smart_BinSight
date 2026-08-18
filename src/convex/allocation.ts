@@ -35,6 +35,7 @@ import {
   type TrustEntry,
 } from "./domain";
 import { findOpenAlert, logDecision, upsertAlert } from "./alerts";
+import { logActivity } from "./activities";
 
 /* ------------------------------------------------------------- result types */
 
@@ -734,6 +735,12 @@ export async function commitAllocationWave(ctx: MutationCtx, now: number): Promi
   for (const decision of result.decisions) {
     await ctx.db.insert("decisionLog", decision);
   }
+  await logActivity(ctx, {
+    eventType: "allocation_wave",
+    category: "decisions",
+    description: `Allocation wave completed — ${result.stats.processed} order(s) processed, ${result.stats.fullyAllocated} fully allocated, ${result.stats.partial} partial, ${result.stats.blocked} blocked`,
+    status: "completed",
+  });
   return result.stats;
 }
 
@@ -906,6 +913,22 @@ export const reallocate = mutation({
       await ctx.db.patch(alert._id, {
         suggestion: `Still short ${remainingNeeded} unit(s) of ${product.sku} — raise an emergency PO (lead time ${product.leadTimeDays}d) with ${product.supplier}`,
         donorOrderId: donorsApplied[0]?.donorOrderId,
+      });
+    }
+
+    if (donorsApplied.length > 0) {
+      await logActivity(ctx, {
+        eventType: "inventory_reallocated",
+        category: "decisions",
+        description: `Reallocated ${donorsApplied.reduce((n, d) => n + d.units, 0)} unit(s) of ${product.sku} to ${target.orderNumber} from ${donorsApplied.map((d) => d.donorOrderNumber).join(", ")}`,
+        entityType: "order",
+        entityId: target._id,
+        orderId: target._id,
+        sku: product.sku,
+        previousValue: `shortfall on ${target.orderNumber}`,
+        newValue: remainingNeeded === 0 ? "shortfall covered" : `still short ${remainingNeeded} unit(s)`,
+        severity: "warning",
+        status: remainingNeeded === 0 ? "resolved" : "partial",
       });
     }
 

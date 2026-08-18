@@ -8,6 +8,7 @@ import { v } from "convex/values";
 import { mutation, type MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { ALERT_TYPE_META, type AlertInput, type DecisionInput } from "./domain";
+import { logActivity } from "./activities";
 
 /* ------------------------------------------------------------ helpers */
 
@@ -94,6 +95,16 @@ export const acknowledgeAlert = mutation({
     if (!alert) return { applied: false, reason: "alert not found" };
     if (alert.status !== "open") return { applied: false, reason: `alert is ${alert.status}` };
     await ctx.db.patch(id, { status: "acknowledged" });
+    await logActivity(ctx, {
+      eventType: "crisis_acknowledged",
+      category: "crisis",
+      description: `Crisis acknowledged: ${alert.title}`,
+      entityType: alert.refType,
+      entityId: alert.refId,
+      orderId: alert.refType === "order" ? alert.refId : undefined,
+      severity: alert.severity,
+      status: "acknowledged",
+    });
     return { applied: true };
   },
 });
@@ -127,6 +138,17 @@ export const resolveAlert = mutation({
       customer,
       refId: alert.refId,
       createdAt: now,
+    });
+    await logActivity(ctx, {
+      eventType: "crisis_resolved",
+      category: "crisis",
+      description: `Crisis resolved: ${alert.title} — ${decision}`,
+      entityType: alert.refType,
+      entityId: alert.refId,
+      orderId: alert.refType === "order" ? alert.refId : undefined,
+      severity: alert.severity,
+      status: "resolved",
+      newValue: decision,
     });
     return { applied: true };
   },
@@ -174,6 +196,18 @@ export const raiseReorder = mutation({
       refId: product._id,
       createdAt: now,
     });
+    await logActivity(ctx, {
+      eventType: "reorder_raised",
+      category: "inventory",
+      description: `Reorder raised for ${product.sku} — PO for ${product.reorderQty} units with ${product.supplier}`,
+      entityType: "product",
+      entityId: product._id,
+      sku: product.sku,
+      previousValue: `${product.onHand} on hand (reorder point ${product.reorderPoint})`,
+      newValue: `PO ${product.reorderQty} units · lead time ${product.leadTimeDays}d`,
+      severity: "warning",
+      status: "open",
+    });
     return { applied: true };
   },
 });
@@ -196,6 +230,18 @@ export const receiveStock = mutation({
       outcome: `${product.sku} on hand is now ${newOnHand} (was ${product.onHand})`,
       refId: product._id,
       createdAt: now,
+    });
+    await logActivity(ctx, {
+      eventType: "stock_received",
+      category: "inventory",
+      description: `Stock received for ${product.sku}: +${qty} units`,
+      entityType: "product",
+      entityId: product._id,
+      sku: product.sku,
+      previousValue: `${product.onHand} on hand`,
+      newValue: `${newOnHand} on hand`,
+      severity: "info",
+      status: "received",
     });
     if (newOnHand >= product.reorderPoint) {
       await resolveAlertByDedupeKey(ctx, `low_stock:${product._id}`, now, "stock received above reorder point");

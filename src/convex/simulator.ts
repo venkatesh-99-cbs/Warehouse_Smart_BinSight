@@ -35,6 +35,7 @@ import {
   type WaveResult,
 } from "./allocation";
 import { logDecision } from "./alerts";
+import { logActivity } from "./activities";
 
 /* ------------------------------------------------------------ input types */
 
@@ -1262,6 +1263,13 @@ export const applySimulation = mutation({
       detail: `Allocation wave re-run — ${stats.processed} order(s) processed.`,
       outcome: `${inserted} new order(s) committed · ${restocks} stock line(s) received · allocation re-run`,
       createdAt: now,
+    });
+    await logActivity(ctx, {
+      eventType: "simulation_applied",
+      category: "decisions",
+      description: `Simulation applied — ${inserted} order(s) added, ${overrides} priority change(s), ${restocks} restock(s), ${damaged} damaged, ${missing} missing, ${delays} delay(s); allocation re-run (${stats.processed} order(s))`,
+      status: "completed",
+      timestamp: now,
     });
 
     return { applied: true, stats, inserted, overrides, restocks, damaged, missing, delays };

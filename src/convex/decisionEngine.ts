@@ -35,6 +35,7 @@ import {
   type WaveResult,
 } from "./allocation";
 import { SIM_DEFAULTS, countMetrics, type Capacity } from "./simulator";
+import { logActivity } from "./activities";
 
 /* ------------------------------------------------------------ constants */
 
@@ -791,6 +792,7 @@ export const logManagerDecision = mutation({
     reason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const createdAt = Date.now();
     await ctx.db.insert("decisionLog", {
       kind: "simulation",
       summary: `Manager decision: ${args.optionLabel} for ${args.orderNumber}`,
@@ -798,7 +800,19 @@ export const logManagerDecision = mutation({
       outcome: `${args.approval} — ${args.headline}. ${args.impact}`,
       customer: args.customer,
       refId: args.orderId,
-      createdAt: Date.now(),
+      createdAt,
+    });
+    await logActivity(ctx, {
+      eventType: "manager_decision",
+      category: "decisions",
+      description: `${args.approval} — ${args.optionLabel} for ${args.orderNumber}: ${args.headline}`,
+      entityType: "order",
+      entityId: args.orderId,
+      orderId: args.orderId,
+      newValue: args.approval,
+      severity: args.approval === "Rejected" ? "warning" : "info",
+      status: args.approval.toLowerCase(),
+      timestamp: createdAt,
     });
     return { logged: true };
   },
